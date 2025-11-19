@@ -151,9 +151,9 @@ export default function Home() {
                   setErrorMessage(null);
                 }
               }}
-              onFocus={registerActivity}
-              onPointerDown={registerActivity}
-              onKeyDown={registerActivity}
+              onFocus={() => registerActivity()}
+              onPointerDown={() => registerActivity()}
+              onKeyDown={() => registerActivity()}
               placeholder={selectedAgent.placeholder}
               className={`h-[460px] w-full resize-none rounded-2xl border border-slate-700 bg-slate-950/70 p-4 text-base text-slate-100 shadow-inner outline-none transition duration-200 focus:border-emerald-400/60 focus:ring-2 focus:ring-emerald-500/30 ${maskVisible ? "blur-lg brightness-75" : ""}`}
             />

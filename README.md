@@ -1,16 +1,40 @@
-我想在这个项目中实现如下功能：
-打开页面后，左侧是一个大的文本输入框，右侧是大的文本输出框，文本输出框有复制按钮，能方便用户快速复制
-左侧的输入框上面有tab可供用户快速选择不同prompt的agent
-举个例子：
-  1.邮件润色，这个agent的prompt是可以把用户输入的内容润色成合适的英文邮件
-  2.commit润色，这个agent的prompt是可以把用户输入的内容润色成合适的git commit
-  3.日记润色，这个agent主要是我练习英语写日记，我会尽量用英语写，不会的地方他会给我用中文，他能给我改成不容易误解的英语，并告诉我哪里容易误解，可以怎么写更好，总结出我需要记忆的语法
-  4.standUp：stand up会议发言润色，每天早上都会说我昨天干了什么，今天要干什么，有没有block，还是我尽力用中文描述，他会给我改成合适的简单的英语
+# EN Assistant
 
-  这些agent的prompt都是我提前写好的，可以先hard code到代码里，用户只需要输入内容，就可以得到润色后的内容，并且可以复制
+Dual-pane writing assistant built with Next.js App Router. The left editor hosts multiple polishing agents (email, commit, diary, stand-up) while the right panel returns the OpenAI-generated rewrite with one-click copy. A privacy mask hides the original draft after three seconds of inactivity so Chinese content stays off your office screen.
 
-并且我希望左侧的输入框，当用户三秒钟没有输入后，有个蒙版遮罩效果，当用户开始输入了蒙版再取消，这个功能是因为办公语言是英语，我们在办公室的屏幕上尽量不要让其他人看到中文
+## Prerequisites
 
-  可以先完成前端部分
+- Node.js 18+
+- An OpenAI API key with access to `gpt-4o-mini` (or any compatible Chat Completion model)
 
-  然后再完成后端部分，后端部分使用open ai api做人工智能agent
+## Setup
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Create `.env.local`:
+   ```bash
+   OPENAI_API_KEY=sk-your-key
+   # Optional override (defaults to gpt-4o-mini):
+   OPENAI_MODEL=gpt-4o-mini
+   ```
+3. Start developing:
+   ```bash
+   npm run dev
+   ```
+4. Visit `http://localhost:3000`, pick an agent tab, type your raw notes, and press **Run …** to generate the polished output.
+
+## Available Scripts
+
+- `npm run dev` – start the Next.js dev server
+- `npm run lint` – run ESLint
+- `npm run build` / `npm run start` – production build & serve
+
+## Architecture
+
+- `src/lib/agents.ts` centralizes agent metadata (id, prompt, placeholder) so the UI and API read from the same list.
+- `src/app/page.tsx` renders the UI, handles the privacy mask timer, calls the `/api/agents` endpoint, and manages clipboard feedback.
+- `src/app/api/agents/route.ts` validates the payload and forwards agent-specific prompts to OpenAI via the official SDK.
+
+Customize `src/lib/agents.ts` to add or tweak agents, and set `OPENAI_MODEL` if you want to experiment with other GPT families.

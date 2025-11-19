@@ -1,75 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-type Agent = {
-  id: string;
-  name: string;
-  prompt: string;
-  description: string;
-  placeholder: string;
-};
-
-const AGENTS: Agent[] = [
-  {
-    id: "mail",
-    name: "Email Polish",
-    description:
-      "Turn whatever you type into a polite, structured, easy-to-read English email.",
-    prompt:
-      "You are an email assistant who rewrites Chinese or simple English into natural, professional English business emails.",
-    placeholder: "Paste or type the email draft you want to send...",
-  },
-  {
-    id: "commit",
-    name: "Commit Polish",
-    description:
-      "Rewrite input as a clear, semantic Git commit message you would ship to prod.",
-    prompt:
-      "You are a senior engineer who rewrites the input into a one-line summary plus optional bullets suitable for a git commit message.",
-    placeholder: "Describe the change, fix, or feature...",
-  },
-  {
-    id: "diary",
-    name: "Diary Coach",
-    description:
-      "Make your English diary sound natural, avoid misunderstandings, and highlight grammar takeaways.",
-    prompt:
-      "You are an English writing coach who fixes grammar and clarity, rewrites the diary, and explains risky expressions plus grammar to remember.",
-    placeholder: "Write what happened today or the sentences you want to practice...",
-  },
-  {
-    id: "standup",
-    name: "Stand-up Coach",
-    description:
-      "Turn your notes into a concise Yesterday / Today / Block stand-up update.",
-    prompt:
-      "You are a stand-up translator who rewrites the input into simple English under Yesterday, Today, and Blocked sections.",
-    placeholder: "What did you finish yesterday? What's next today? Any blockers?",
-  },
-];
-
-const buildPreview = (agent: Agent, raw: string) => {
-  const sentences = raw
-    .split(/\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  if (!sentences.length) {
-    return "";
-  }
-
-  const transformed = sentences.map((line) => {
-    const trimmed = line.replace(/\s+/g, " ");
-    if (!trimmed) return "";
-    const capitalized =
-      trimmed.charAt(0).toUpperCase() + trimmed.slice(1).replace(/\s+/, " ");
-    const ending = /[.!?。！？]$/.test(capitalized) ? "" : ".";
-    return `${capitalized}${ending}`;
-  });
-
-  return transformed.join("\n");
-};
+import { AGENTS, type Agent } from "@/lib/agents";
 
 export default function Home() {
   const [selectedAgent, setSelectedAgent] = useState<Agent>(AGENTS[0]);
@@ -78,6 +11,16 @@ export default function Home() {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">(
     "idle",
   );
+  const [outputText, setOutputText] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [activityToken, setActivityToken] = useState(0);
+  const idleOutputMessage =
+    "Waiting for text on the left to generate a polished result.";
+  const outputDisplay = isLoading
+    ? "Generating response with OpenAI..."
+    : outputText || idleOutputMessage;
+  const isCopyDisabled = !outputText.trim() || isLoading;
 
   useEffect(() => {
     if (!inputText.trim()) {
@@ -89,11 +32,22 @@ export default function Home() {
     }, 3000);
 
     return () => clearTimeout(timer);
-  }, [inputText]);
+  }, [inputText, activityToken]);
 
-  const outputText = useMemo(
-    () => buildPreview(selectedAgent, inputText),
-    [inputText, selectedAgent],
+  const registerActivity = useCallback(
+    (nextValue?: string) => {
+      const targetText =
+        typeof nextValue === "string" ? nextValue : inputText;
+
+      if (!targetText.trim()) {
+        setMaskVisible(false);
+        return;
+      }
+
+      setMaskVisible(false);
+      setActivityToken((token) => token + 1);
+    },
+    [inputText],
   );
 
   const handleCopy = async () => {
@@ -105,6 +59,46 @@ export default function Home() {
     } catch {
       setCopyState("error");
       setTimeout(() => setCopyState("idle"), 2000);
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!inputText.trim()) {
+      setErrorMessage("Please provide some text to polish.");
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch("/api/agents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: selectedAgent.id,
+          input: inputText,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({}));
+        const message =
+          typeof errorPayload?.error === "string"
+            ? errorPayload.error
+            : "Failed to generate response. Please try again.";
+        setErrorMessage(message);
+        return;
+      }
+
+      const data = (await response.json()) as { result: string };
+      setOutputText(data.result.trim());
+      setCopyState("idle");
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("Network error. Please check your connection and retry.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -122,6 +116,9 @@ export default function Home() {
                   onClick={() => {
                     setSelectedAgent(agent);
                     setMaskVisible(false);
+                    setCopyState("idle");
+                    setErrorMessage(null);
+                    setActivityToken((token) => token + 1);
                   }}
                   className={`rounded-full px-4 py-2 text-sm font-medium transition ${
                     isActive
@@ -149,8 +146,14 @@ export default function Home() {
               value={inputText}
               onChange={(event) => {
                 setInputText(event.target.value);
-                setMaskVisible(false);
+                registerActivity(event.target.value);
+                if (errorMessage) {
+                  setErrorMessage(null);
+                }
               }}
+              onFocus={registerActivity}
+              onPointerDown={registerActivity}
+              onKeyDown={registerActivity}
               placeholder={selectedAgent.placeholder}
               className={`h-[460px] w-full resize-none rounded-2xl border border-slate-700 bg-slate-950/70 p-4 text-base text-slate-100 shadow-inner outline-none transition duration-200 focus:border-emerald-400/60 focus:ring-2 focus:ring-emerald-500/30 ${maskVisible ? "blur-lg brightness-75" : ""}`}
             />
@@ -167,6 +170,24 @@ export default function Home() {
               />
             )}
           </div>
+
+          <div className="flex flex-col gap-2 pt-2">
+            {errorMessage && (
+              <p className="text-sm text-rose-300">{errorMessage}</p>
+            )}
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={isLoading}
+              className={`rounded-2xl px-6 py-3 text-base font-semibold text-slate-950 transition ${
+                isLoading
+                  ? "cursor-not-allowed bg-slate-700 text-slate-400"
+                  : "bg-emerald-400 hover:bg-emerald-300"
+              }`}
+            >
+              {isLoading ? "Generating..." : `Run ${selectedAgent.name}`}
+            </button>
+          </div>
         </section>
 
         <section className="flex w-full flex-col gap-4 rounded-2xl bg-slate-950/80 p-6 text-white shadow-2xl backdrop-blur">
@@ -182,9 +203,9 @@ export default function Home() {
             <button
               type="button"
               onClick={handleCopy}
-              disabled={!outputText.trim()}
+              disabled={isCopyDisabled}
               className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                outputText.trim()
+                !isCopyDisabled
                   ? "bg-emerald-400 text-slate-950 hover:bg-emerald-300"
                   : "cursor-not-allowed bg-slate-800 text-slate-500"
               }`}
@@ -198,9 +219,7 @@ export default function Home() {
           </div>
           <textarea
             readOnly
-            value={
-              outputText || "Waiting for text on the left to generate a polished result."
-            }
+            value={outputDisplay}
             className="h-[460px] w-full resize-none rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-base leading-relaxed text-white/90 shadow-inner outline-none"
           />
         </section>

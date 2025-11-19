@@ -1,36 +1,16 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+我想在这个项目中实现如下功能：
+打开页面后，左侧是一个大的文本输入框，右侧是大的文本输出框，文本输出框有复制按钮，能方便用户快速复制
+左侧的输入框上面有tab可供用户快速选择不同prompt的agent
+举个例子：
+  1.邮件润色，这个agent的prompt是可以把用户输入的内容润色成合适的英文邮件
+  2.commit润色，这个agent的prompt是可以把用户输入的内容润色成合适的git commit
+  3.日记润色，这个agent主要是我练习英语写日记，我会尽量用英语写，不会的地方他会给我用中文，他能给我改成不容易误解的英语，并告诉我哪里容易误解，可以怎么写更好，总结出我需要记忆的语法
+  4.standUp：stand up会议发言润色，每天早上都会说我昨天干了什么，今天要干什么，有没有block，还是我尽力用中文描述，他会给我改成合适的简单的英语
 
-## Getting Started
+  这些agent的prompt都是我提前写好的，可以先hard code到代码里，用户只需要输入内容，就可以得到润色后的内容，并且可以复制
 
-First, run the development server:
+并且我希望左侧的输入框，当用户三秒钟没有输入后，有个蒙版遮罩效果，当用户开始输入了蒙版再取消，这个功能是因为办公语言是英语，我们在办公室的屏幕上尽量不要让其他人看到中文
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+  可以先完成前端部分
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+  然后再完成后端部分，后端部分使用open ai api做人工智能agent
